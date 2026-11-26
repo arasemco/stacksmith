@@ -119,6 +119,90 @@ func main() {
 		writeJSON(w, http.StatusOK, entry)
 	})
 
+	mux.HandleFunc("GET /v1/catalog", func(w http.ResponseWriter, _ *http.Request) {
+		refs, err := store.Catalog()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"catalog": refs})
+	})
+	mux.HandleFunc("GET /v1/stacks", func(w http.ResponseWriter, _ *http.Request) {
+		entries, err := store.ListStacks()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"stacks": entries})
+	})
+	mux.HandleFunc("POST /v1/stacks", func(w http.ResponseWriter, r *http.Request) {
+		var stack services.Stack
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&stack); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		entry, err := store.CreateStack(stack)
+		if errors.Is(err, services.ErrExists) {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		writeJSON(w, http.StatusCreated, entry)
+	})
+	mux.HandleFunc("GET /v1/stacks/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		content, err := store.ReadStack(name)
+		if errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "no such stack", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		stack, err := store.Stack(name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"name":    name,
+			"path":    "stacks/" + name + "/docker-compose.yml",
+			"content": content,
+			"spec":    stack,
+		})
+	})
+	mux.HandleFunc("PUT /v1/stacks/{name}", func(w http.ResponseWriter, r *http.Request) {
+		var stack services.Stack
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&stack); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		entry, err := store.UpdateStack(r.PathValue("name"), stack)
+		if errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "no such stack", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		writeJSON(w, http.StatusOK, entry)
+	})
+	mux.HandleFunc("DELETE /v1/stacks/{name}", func(w http.ResponseWriter, r *http.Request) {
+		if err := store.DeleteStack(r.PathValue("name")); errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "no such stack", http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	log.Printf("api listening on %s (root %s)", *addr, *root)
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
