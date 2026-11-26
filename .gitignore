@@ -1,0 +1,6 @@
+/bin/
+*.test
+web/node_modules/
+web/dist/
+/data/
+.idea/

@@ -1,0 +1,66 @@
+name: test
+
+on:
+  push:
+    branches: [dev, api, web]
+  pull_request:
+    branches: [dev, api, web]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apps:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.list.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: list
+        run: |
+          apps=$(for f in */compose.yaml; do [ -f "$f" ] && echo "${f%/compose.yaml}"; done | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "apps=$apps" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: apps
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.apps.outputs.apps) }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        if: hashFiles(format('{0}/go.mod', matrix.app)) != ''
+        with:
+          go-version-file: ${{ matrix.app }}/go.mod
+          cache-dependency-path: ${{ matrix.app }}/go.sum
+
+      - if: hashFiles(format('{0}/go.mod', matrix.app)) != ''
+        run: go vet ./...
+
+      - if: hashFiles(format('{0}/go.mod', matrix.app)) != ''
+        run: go test ./...
+
+      - uses: actions/setup-node@v7
+        if: hashFiles(format('{0}/package.json', matrix.app)) != ''
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - if: hashFiles(format('{0}/package.json', matrix.app)) != ''
+        run: npm ci
+
+      - if: hashFiles(format('{0}/package.json', matrix.app)) != ''
+        run: npm run build

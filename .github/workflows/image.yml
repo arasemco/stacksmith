@@ -1,0 +1,75 @@
+name: image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+jobs:
+  apps:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.list.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: list
+        run: |
+          apps=$(for f in */compose.yaml; do [ -f "$f" ] && echo "${f%/compose.yaml}"; done | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "apps=$apps" >> "$GITHUB_OUTPUT"
+
+  image:
+    needs: apps
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.apps.outputs.apps) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: info
+        run: |
+          compose="${{ matrix.app }}/compose.yaml"
+          version=$(sed -n 's|^[[:space:]]*image: .*:\([0-9][0-9.]*\)[[:space:]]*$|\1|p' "$compose" | head -1)
+          image=$(sed -n 's|^[[:space:]]*image: *\([^:]*\):.*|\1|p' "$compose" | head -1 | sed 's|.*/||')
+          test -n "$version"
+          test -n "$image"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.app }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ steps.info.outputs.image }}:${{ steps.info.outputs.version }}
+            ghcr.io/${{ github.repository }}/${{ steps.info.outputs.image }}:sha-${{ github.sha }}
+          cache-from: type=gha,scope=${{ steps.info.outputs.image }}
+          cache-to: type=gha,mode=max,scope=${{ steps.info.outputs.image }}
+
+  dispatch:
+    needs: image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start the release workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+        run: gh workflow run release.yml --ref "$BRANCH" -R "$GITHUB_REPOSITORY"

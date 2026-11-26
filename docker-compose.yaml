@@ -1,0 +1,13 @@
+include:
+  - api/compose.yaml
+  - web/compose.yaml
+
+services:
+  api:
+    ports: !override
+      - "36900:8080"
+    volumes:
+      - ./data:/app/data
+  web:
+    ports: !override
+      - "36901:8080"
