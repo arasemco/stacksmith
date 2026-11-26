@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    image: stacksmith/api:0.1.1
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8080}:8080"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  api-health:
+    image: curlimages/curl:8.22.0
+    restart: unless-stopped
+    network_mode: "service:api"
+    entrypoint: ["sleep", "infinity"]
+    init: true
+    stop_grace_period: 0s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://localhost:8080/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 32M
