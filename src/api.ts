@@ -79,6 +79,12 @@ export type ServiceSpec = {
   additions?: Addition[];
 };
 
+export type ServiceRef = { name: string; additions?: Addition[] };
+
+export type StackSpec = { name: string; templates: string[] };
+
+export type StoredStack = { name: string; path: string; content: string; spec: StackSpec };
+
 export type Entry = { name: string; path: string; files?: string[] };
 export type StoredService = { name: string; path: string; content: string; spec: ServiceSpec };
 
@@ -124,4 +130,44 @@ export async function updateService(name: string, spec: ServiceSpec): Promise<En
 export async function deleteService(name: string): Promise<void> {
   const res = await fetch(`v1/services/${encodeURIComponent(name)}`, { method: "DELETE" });
   if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
+}
+
+export async function listStacks(): Promise<Entry[]> {
+  const res = await fetch("v1/stacks");
+  const body = await json<{ stacks: Entry[] }>(res);
+  return body.stacks;
+}
+
+export async function createStack(spec: StackSpec): Promise<Entry> {
+  const res = await fetch("v1/stacks", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(spec),
+  });
+  return json<Entry>(res);
+}
+
+export async function readStack(name: string): Promise<StoredStack> {
+  const res = await fetch(`v1/stacks/${encodeURIComponent(name)}`);
+  return json<StoredStack>(res);
+}
+
+export async function updateStack(name: string, spec: StackSpec): Promise<Entry> {
+  const res = await fetch(`v1/stacks/${encodeURIComponent(name)}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(spec),
+  });
+  return json<Entry>(res);
+}
+
+export async function deleteStack(name: string): Promise<void> {
+  const res = await fetch(`v1/stacks/${encodeURIComponent(name)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+export async function catalog(): Promise<ServiceRef[]> {
+  const res = await fetch("v1/catalog");
+  const body = await json<{ catalog: ServiceRef[] }>(res);
+  return body.catalog;
 }
