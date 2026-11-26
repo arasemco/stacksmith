@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stacksmith</title>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <h1>stacksmith</h1>
+        <p>services in data/services/, stacks in data/stacks/</p>
+      </div>
+      <span id="status" class="status"></span>
+    </header>
+
+    <nav class="modes" id="modes" aria-label="Mode">
+      <button data-mode="service" class="active">Service</button>
+      <button data-mode="stack">Stack</button>
+    </nav>
+
+    <main>
+      <section class="controls" id="service-panel" aria-label="New service">
+        <div class="block">
+          <h2>New service</h2>
+          <div class="grid2">
+            <div class="field"><label for="image">image *</label><input id="image" spellcheck="false" placeholder="node:20-alpine" /></div>
+            <div class="field"><label for="restart">restart</label>
+              <select id="restart">
+                <option value="">none</option>
+                <option value="unless-stopped" selected>unless-stopped</option>
+                <option value="always">always</option>
+                <option value="on-failure">on-failure</option>
+                <option value="no">no</option>
+              </select>
+            </div>
+          </div>
+          <div class="block">
+            <h2>Build</h2>
+            <div class="field"><label for="build">context</label><input id="build" spellcheck="false" placeholder="./api or https://github.com/acme/app.git#main" /></div>
+            <div class="grid2">
+              <div class="field"><label for="build-dockerfile">dockerfile</label><input id="build-dockerfile" spellcheck="false" placeholder="Dockerfile" /></div>
+              <div class="field"><label for="build-target">target</label><input id="build-target" spellcheck="false" placeholder="runtime" /></div>
+              <div class="field"><label for="build-network">network</label><input id="build-network" spellcheck="false" placeholder="host" /></div>
+              <div class="field"><label for="build-shm">shm size</label><input id="build-shm" spellcheck="false" placeholder="1gb" /></div>
+              <div class="field"><label for="build-isolation">isolation</label><input id="build-isolation" spellcheck="false" placeholder="default" /></div>
+              <div class="field"><label for="build-platforms">platforms</label><input id="build-platforms" spellcheck="false" placeholder="linux/amd64, linux/arm64" /></div>
+              <div class="field"><label for="build-cache-from">cache from</label><input id="build-cache-from" spellcheck="false" placeholder="type=gha" /></div>
+              <div class="field"><label for="build-cache-to">cache to</label><input id="build-cache-to" spellcheck="false" placeholder="type=gha,mode=max" /></div>
+              <div class="field"><label for="build-tags">tags</label><input id="build-tags" spellcheck="false" placeholder="app:edge" /></div>
+              <div class="field"><label for="build-ssh">ssh</label><input id="build-ssh" spellcheck="false" placeholder="default" /></div>
+              <div class="field"><label for="build-extra-hosts">extra hosts</label><input id="build-extra-hosts" spellcheck="false" placeholder="db=10.0.0.5" /></div>
+              <div class="field"><label for="build-entitlements">entitlements</label><input id="build-entitlements" spellcheck="false" placeholder="network.host" /></div>
+            </div>
+            <div class="field"><label for="build-inline">dockerfile inline</label><textarea id="build-inline" rows="3" spellcheck="false"></textarea></div>
+            <div class="grid2">
+              <label class="check"><input type="checkbox" id="build-pull" /> pull</label>
+              <label class="check"><input type="checkbox" id="build-no-cache" /> no cache</label>
+            </div>
+            <div class="sub"><h2>Args</h2><div id="buildArgs" class="rows"></div><button class="add-row" data-add="buildArgs">+ Add arg</button></div>
+            <div class="sub"><h2>Additional contexts</h2><div id="buildContexts" class="rows"></div><button class="add-row" data-add="buildContexts">+ Add context</button></div>
+            <div class="sub"><h2>Ulimits</h2><div id="buildUlimits" class="rows"></div><button class="add-row" data-add="buildUlimits">+ Add ulimit</button></div>
+          </div>
+          <div class="field"><label for="pull">pull policy</label>
+            <select id="pull">
+              <option value="">none</option>
+              <option value="missing" selected>missing</option>
+              <option value="always">always</option>
+              <option value="never">never</option>
+              <option value="build">build</option>
+            </select>
+          </div>
+          <div class="field"><label for="command">command override</label><input id="command" spellcheck="false" placeholder='npm start or ["node", "server.js"]' /></div>
+        </div>
+
+        <div class="block">
+          <h2>Deploy</h2>
+          <div class="grid2">
+            <div class="field"><label for="deploy-cpus">cpus</label><input id="deploy-cpus" spellcheck="false" placeholder="1.0" /></div>
+            <div class="field"><label for="deploy-memory">memory</label><input id="deploy-memory" spellcheck="false" placeholder="512M" /></div>
+            <div class="field"><label for="deploy-replicas">replicas</label><input id="deploy-replicas" type="number" min="0" placeholder="1" /></div>
+            <div class="field"><label for="profiles">profiles</label><input id="profiles" spellcheck="false" placeholder="frontend, web" /></div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2>Ports</h2>
+          <div id="ports" class="rows"></div>
+          <button class="add-row" data-add="ports">+ Add port</button>
+        </div>
+
+        <div class="block">
+          <h2>Labels</h2>
+          <div id="labels" class="rows"></div>
+          <button class="add-row" data-add="labels">+ Add label</button>
+        </div>
+
+        <div class="block">
+          <h2>Environment variables</h2>
+          <div id="env" class="rows"></div>
+          <button class="add-row" data-add="env">+ Add env var</button>
+        </div>
+
+        <div class="block">
+          <h2>Volumes</h2>
+          <div id="volumes" class="rows"></div>
+          <button class="add-row" data-add="volumes">+ Add volume</button>
+        </div>
+
+        <div class="block">
+          <h2>Configs</h2>
+          <div id="configs" class="rows"></div>
+          <button class="add-row" data-add="configs">+ Add config</button>
+        </div>
+
+        <div class="block">
+          <h2>Secrets</h2>
+          <div id="secrets" class="rows"></div>
+          <button class="add-row" data-add="secrets">+ Add secret</button>
+        </div>
+
+        <div class="block">
+          <h2>Additions <span class="hint">layers beside docker-compose.yml</span></h2>
+          <ul id="additions" class="layers"></ul>
+          <button id="add-addition" class="add-row">+ Add addition</button>
+          <div id="addition-editor" class="addition-editor" hidden></div>
+        </div>
+
+        <div class="block">
+          <h2>Healthcheck</h2>
+          <div class="field"><label for="hc-test">test command</label><input id="hc-test" spellcheck="false" placeholder="curl -f http://localhost/" /></div>
+          <div class="grid2">
+            <div class="field"><label for="hc-interval">interval</label><input id="hc-interval" spellcheck="false" placeholder="10s" /></div>
+            <div class="field"><label for="hc-timeout">timeout</label><input id="hc-timeout" spellcheck="false" placeholder="5s" /></div>
+            <div class="field"><label for="hc-retries">retries</label><input id="hc-retries" type="number" min="0" placeholder="3" /></div>
+            <div class="field"><label for="hc-start">start period</label><input id="hc-start" spellcheck="false" placeholder="20s" /></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button id="new">New service</button>
+          <button id="save" class="primary save">Save service</button>
+        </div>
+      </section>
+
+      <section class="controls" id="stack-panel" aria-label="Stack" hidden>
+        <div class="block">
+          <h2>Stack</h2>
+          <div class="field"><label for="stack-name">name *</label><input id="stack-name" spellcheck="false" placeholder="site" /></div>
+          <div class="row-actions">
+            <select id="stack-picker" aria-label="add a service"></select>
+            <button id="stack-add">Add</button>
+          </div>
+          <div class="block sub">
+            <h2>Services <span class="hint">included in this order</span></h2>
+            <ul id="stack-templates" class="layers"></ul>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button id="stack-new">New stack</button>
+          <button id="stack-save" class="primary">Save stack</button>
+        </div>
+      </section>
+
+      <section class="output" aria-label="Stored services">
+        <div class="output-head">
+          <span id="active-path" class="active-path"></span>
+          <div class="output-actions">
+            <button id="copy">Copy</button>
+            <button id="download">Download</button>
+          </div>
+        </div>
+        <div class="output-body">
+          <nav id="files" class="files" aria-label="Stored services"></nav>
+          <pre class="code"><code id="code" class="hljs"></code></pre>
+        </div>
+      </section>
+
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

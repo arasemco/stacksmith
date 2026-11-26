@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.vscode
+**/node_modules
+web/dist
+api/internal/webui/dist
+api/bin
+*.md
+docs
+.env
+.env.*
